@@ -1,4 +1,4 @@
-// src/UserList.jsx
+
 import { useEffect, useState } from 'react';
 import api from './api';
 
@@ -6,16 +6,15 @@ function UserList() {
     const [users, setUsers] = useState([]);
     const [userName, setUserName] = useState('');
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
+    const [editingId, setEditingId] = useState(null);
+    const [editName, setEditName] = useState('');
 
     const fetchUsers = async () => {
         try {
             const response = await api.get('/users');
-            setUsers(response.data.data);
+            setUsers(response.data.data || response.data);
         } catch (error) {
-            console.error("목록 가져오기 실패:", error);
+            console.error("실패:", error);
         }
     };
 
@@ -27,27 +26,78 @@ function UserList() {
             setUserName('');
             fetchUsers();
         } catch (error) {
-            alert("등록 실패! (이미 있는 이름일 수도?)");
+            alert("등록 실패!");
         }
     };
 
-    return (
-        <div style={{ border: '2px solid blue', padding: '20px', margin: '20px' }}>
-            <h2>👤 유저 관리</h2>
+    const deleteUser = async (userId) => {
+        if (!window.confirm("삭제하시겠습니까?")) return;
+        try {
+            await api.delete(`/users/${userId}`);
+            fetchUsers();
+        } catch (error) {
+            alert("삭제 실패!");
+        }
+    };
 
-            <div style={{ marginBottom: '10px' }}>
+    const startEdit = (user) => {
+        setEditingId(user.id);
+        setEditName(user.userName);
+    };
+
+    const saveEdit = async (userId) => {
+        try {
+            await api.patch(`/users/${userId}`, { userName: editName });
+            setEditingId(null);
+            fetchUsers();
+        } catch (error) {
+            alert("수정 실패!");
+        }
+    };
+
+    useEffect(() => { fetchUsers(); }, []);
+
+    return (
+        <div className="section-card">
+            <h2>유저 관리</h2>
+
+            <div className="input-row">
                 <input
-                    placeholder="이름을 입력하세요"
+                    className="common-input"
+                    placeholder="이름 입력"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                 />
-                <button onClick={createUser} style={{ marginLeft: '5px' }}>등록</button>
+                <button onClick={createUser} className="btn-black">등록</button>
             </div>
 
-            <ul>
-                {users.map(user => (
-                    <li key={user.id}>
-                        <b>{user.id}번:</b> {user.userName}
+            <ul className="user-list">
+                {Array.isArray(users) && users.map(user => (
+                    <li key={user.id} className="user-item">
+                        {editingId === user.id ? (
+                            <div className="edit-row">
+                                <input
+                                    className="common-input small"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                />
+                                <div className="btn-group">
+                                    <button onClick={() => saveEdit(user.id)} className="btn-green small">저장</button>
+                                    <button onClick={() => setEditingId(null)} className="btn-gray small">취소</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="view-row">
+                                <div className="user-info">
+                                    <span className="user-id">#{user.id}</span>
+                                    <span className="user-name">{user.userName}</span>
+                                </div>
+                                <div className="btn-group">
+                                    <button onClick={() => startEdit(user)} className="btn-orange small">수정</button>
+                                    <button onClick={() => deleteUser(user.id)} className="btn-red small">삭제</button>
+                                </div>
+                            </div>
+                        )}
                     </li>
                 ))}
             </ul>
